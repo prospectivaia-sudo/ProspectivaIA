@@ -1,0 +1,647 @@
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import { Icons } from './components/Icons'
+
+// ── Slide Viewer ──
+function SlideViewer({ slides }) {
+  const [current, setCurrent] = useState(0)
+  const s = slides[current]
+  return (
+    <div>
+      <div className="slides-viewer">
+        <div className="slide-title">{s.title}</div>
+        <ul className="slide-bullets">
+          {s.bullets.map((b, i) => <li key={i}>{b}</li>)}
+        </ul>
+      </div>
+      <div className="slide-nav">
+        <button className="btn btn-ghost btn-sm" onClick={() => setCurrent(Math.max(0, current - 1))} disabled={current === 0}>← Anterior</button>
+        <div className="slide-dots">
+          {slides.map((_, i) => <button key={i} className={`slide-dot ${i === current ? 'active' : ''}`} onClick={() => setCurrent(i)} />)}
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={() => setCurrent(Math.min(slides.length - 1, current + 1))} disabled={current === slides.length - 1}>Siguiente →</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Quiz Viewer ──
+function QuizViewer({ questions, onComplete }) {
+  const [answers, setAnswers] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const score = submitted ? questions.reduce((s, q, i) => s + (answers[i] === q.correct ? 1 : 0), 0) : 0
+
+  const handleSubmit = () => {
+    setSubmitted(true)
+    if (score >= questions.length * 0.7) onComplete?.()
+  }
+
+  if (submitted) {
+    return (
+      <div className="quiz-result fade-in">
+        <div className="quiz-score">{score}/{questions.length}</div>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
+          {score === questions.length ? '¡Perfecto! Dominas este tema.' : score >= questions.length * 0.7 ? '¡Bien hecho! Has aprobado.' : 'Necesitas repasar el material.'}
+        </p>
+        <button className="btn btn-secondary" onClick={() => { setAnswers({}); setSubmitted(false) }}>Intentar de nuevo</button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {questions.map((q, qi) => (
+        <div key={qi} className="quiz-question">
+          <h3>{qi + 1}. {q.q}</h3>
+          <div className="quiz-options">
+            {q.opts.map((opt, oi) => (
+              <button key={oi} className={`quiz-opt ${answers[qi] === oi ? 'selected' : ''}`} onClick={() => setAnswers({ ...answers, [qi]: oi })}>{opt}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button className="btn btn-accent" onClick={handleSubmit} disabled={Object.keys(answers).length < questions.length} style={{ marginTop: 8 }}>Enviar respuestas</button>
+    </div>
+  )
+}
+
+// ── Module Content ──
+function ModuleContent({ mod, onComplete }) {
+  if (!mod) return null
+  const markDone = () => onComplete?.(mod.id)
+
+  if (mod.type === 'video') return (
+    <div className="content-area fade-in">
+      <h2>{mod.title}</h2>
+      <iframe className="video-embed" src={mod.url} title={mod.title} allowFullScreen />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+        <button className="btn btn-accent btn-sm" onClick={markDone}>{Icons.check} Marcar completado</button>
+      </div>
+    </div>
+  )
+
+  if (mod.type === 'slides') return (
+    <div className="content-area fade-in">
+      <h2>{mod.title}</h2>
+      <SlideViewer slides={mod.content} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+        <button className="btn btn-accent btn-sm" onClick={markDone}>{Icons.check} Marcar completado</button>
+      </div>
+    </div>
+  )
+
+  if (mod.type === 'download') return (
+    <div className="content-area fade-in">
+      <h2>{mod.title}</h2>
+      <div className="download-card">
+        <div className="download-icon">{Icons.file}</div>
+        <div className="download-info" style={{ flex: 1 }}>
+          <h4>{mod.file_name}</h4>
+          <p>{mod.file_size}</p>
+        </div>
+        <button className="btn btn-accent btn-sm" onClick={markDone}>{Icons.download} Descargar</button>
+      </div>
+    </div>
+  )
+
+  if (mod.type === 'quiz') return (
+    <div className="content-area fade-in">
+      <h2>{mod.title}</h2>
+      <QuizViewer questions={mod.content} onComplete={markDone} />
+    </div>
+  )
+
+  return null
+}
+
+// ── Create Course Modal ──
+function CreateCourseModal({ onClose, onSave }) {
+  const [form, setForm] = useState({
+    title: '', description: '', category: 'Normas de Auditoría',
+    level: 'Fundamentos', duration: '',
+    image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&h=340&fit=crop',
+  })
+  const set = (k, v) => setForm({ ...form, [k]: v })
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal fade-in" onClick={e => e.stopPropagation()}>
+        <h2>Nuevo Curso</h2>
+        <div className="form-group"><label>Título</label><input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: NIA 315 — Evaluación de Riesgos" /></div>
+        <div className="form-group"><label>Descripción</label><textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Describe el contenido del curso..." /></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group"><label>Categoría</label>
+            <select value={form.category} onChange={e => set('category', e.target.value)}>
+              <option>Normas de Auditoría</option><option>Control Interno</option><option>Cumplimiento</option><option>Forense</option><option>Gestión de Riesgos</option><option>Tributario</option>
+            </select>
+          </div>
+          <div className="form-group"><label>Nivel</label>
+            <select value={form.level} onChange={e => set('level', e.target.value)}>
+              <option>Fundamentos</option><option>Intermedio</option><option>Avanzado</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-group"><label>Duración estimada</label><input value={form.duration} onChange={e => set('duration', e.target.value)} placeholder="Ej: 6 horas" /></div>
+        <div className="form-group"><label>URL de imagen</label><input value={form.image_url} onChange={e => set('image_url', e.target.value)} /></div>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-accent" onClick={() => { if (form.title && form.description) onSave(form) }} disabled={!form.title || !form.description}>Crear Curso</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Add Module Modal ──
+function AddModuleModal({ onClose, onSave }) {
+  const [type, setType] = useState('video')
+  const [title, setTitle] = useState('')
+  const [url, setUrl] = useState('')
+  const [duration, setDuration] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [fileSize, setFileSize] = useState('')
+  const [contentRaw, setContentRaw] = useState('')
+
+  const handleSave = () => {
+    if (!title) return
+    const mod = { title, type }
+    if (type === 'video') { mod.url = url || 'https://www.youtube.com/embed/dQw4w9WgXcQ'; mod.duration = duration || '15 min' }
+    if (type === 'slides') { try { mod.content = JSON.parse(contentRaw) } catch { mod.content = [{ slide: 1, title, bullets: ['Contenido pendiente'] }] } }
+    if (type === 'download') { mod.file_name = fileName || 'documento.pdf'; mod.file_size = fileSize || '1 MB' }
+    if (type === 'quiz') { try { mod.content = JSON.parse(contentRaw) } catch { mod.content = [{ q: 'Pregunta de ejemplo', opts: ['A', 'B', 'C', 'D'], correct: 0 }] } }
+    onSave(mod)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal fade-in" onClick={e => e.stopPropagation()}>
+        <h2>Agregar Módulo</h2>
+        <div className="form-group"><label>Título</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ej: Introducción al tema" /></div>
+        <div className="form-group"><label>Tipo</label>
+          <select value={type} onChange={e => setType(e.target.value)}>
+            <option value="video">Video</option><option value="slides">Presentación</option><option value="download">Descargable</option><option value="quiz">Evaluación</option>
+          </select>
+        </div>
+        {type === 'video' && (<>
+          <div className="form-group"><label>URL embed</label><input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.youtube.com/embed/..." /></div>
+          <div className="form-group"><label>Duración</label><input value={duration} onChange={e => setDuration(e.target.value)} placeholder="20 min" /></div>
+        </>)}
+        {type === 'slides' && (
+          <div className="form-group"><label>Contenido (JSON)</label><textarea value={contentRaw} onChange={e => setContentRaw(e.target.value)} placeholder={'[{"slide":1,"title":"Título","bullets":["Punto 1"]}]'} style={{ minHeight: 120, fontFamily: 'monospace', fontSize: 12 }} /></div>
+        )}
+        {type === 'download' && (<>
+          <div className="form-group"><label>Nombre archivo</label><input value={fileName} onChange={e => setFileName(e.target.value)} placeholder="guia.pdf" /></div>
+          <div className="form-group"><label>Tamaño</label><input value={fileSize} onChange={e => setFileSize(e.target.value)} placeholder="2.5 MB" /></div>
+        </>)}
+        {type === 'quiz' && (
+          <div className="form-group"><label>Preguntas (JSON)</label><textarea value={contentRaw} onChange={e => setContentRaw(e.target.value)} placeholder={'[{"q":"Pregunta","opts":["A","B","C","D"],"correct":0}]'} style={{ minHeight: 120, fontFamily: 'monospace', fontSize: 12 }} /></div>
+        )}
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-accent" onClick={handleSave} disabled={!title}>Agregar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Auth Screen ──
+function AuthScreen({ onLogin }) {
+  const [mode, setMode] = useState('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async () => {
+    setError('')
+    if (!email || !password) return setError('Completa todos los campos.')
+    if (mode === 'register' && !name) return setError('Ingresa tu nombre completo.')
+    if (!email.includes('@')) return setError('Ingresa un correo válido.')
+    if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
+
+    setLoading(true)
+    try {
+      if (mode === 'register') {
+        const { data, error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } }
+        })
+        if (err) throw err
+        if (data.user) onLogin(data.user)
+      } else {
+        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
+        if (err) throw err
+        if (data.user) onLogin(data.user)
+      }
+    } catch (err) {
+      setError(err.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : err.message || 'Error al conectar.')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="auth-wrapper">
+      <div className="auth-card fade-in">
+        <div className="auth-logo">{Icons.logo} ProspectivaIA</div>
+        <div className="auth-subtitle">Plataforma de formación para auditores</div>
+        <h2>{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
+        <p className="desc">{mode === 'login' ? 'Accede a tus cursos y continúa aprendiendo.' : 'Regístrate para acceder al contenido.'}</p>
+        {error && <div className="auth-error">{error}</div>}
+        {mode === 'register' && (
+          <div className="form-group"><label>Nombre completo</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Juan Pérez" /></div>
+        )}
+        <div className="form-group"><label>Correo electrónico</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com" /></div>
+        <div className="form-group">
+          <label>Contraseña</label>
+          <div className="input-wrap">
+            <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+            <button className="toggle-pw" onClick={() => setShowPw(!showPw)} type="button">{showPw ? Icons.eyeOff : Icons.eye}</button>
+          </div>
+        </div>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading} style={{ marginTop: 8 }}>
+          {loading ? 'Cargando...' : mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+        </button>
+        <div className="auth-switch">
+          {mode === 'login'
+            ? <>¿No tienes cuenta? <button onClick={() => { setMode('register'); setError('') }}>Regístrate</button></>
+            : <>¿Ya tienes cuenta? <button onClick={() => { setMode('login'); setError('') }}>Inicia sesión</button></>
+          }
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Helper functions ──
+const getModIcon = (type) => {
+  if (type === 'video') return <div className="module-icon video">{Icons.play}</div>
+  if (type === 'slides') return <div className="module-icon slides">{Icons.slides}</div>
+  if (type === 'download') return <div className="module-icon download">{Icons.file}</div>
+  if (type === 'quiz') return <div className="module-icon quiz">{Icons.cert}</div>
+  return null
+}
+
+const levelBadge = (level) => {
+  if (level === 'Fundamentos') return 'badge-green'
+  if (level === 'Intermedio') return 'badge-amber'
+  return 'badge-neutral'
+}
+
+// ── Main App ──
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState('catalog')
+  const [courses, setCourses] = useState([])
+  const [enrollments, setEnrollments] = useState([])
+  const [progress, setProgress] = useState([])
+  const [selectedCourse, setSelectedCourse] = useState(null)
+  const [selectedModule, setSelectedModule] = useState(null)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('Todos')
+  const [showCreateCourse, setShowCreateCourse] = useState(false)
+  const [showAddModule, setShowAddModule] = useState(false)
+
+  // Check auth on load
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Load courses
+  useEffect(() => {
+    loadCourses()
+  }, [])
+
+  // Load enrollments & progress when user changes
+  useEffect(() => {
+    if (user) {
+      loadEnrollments()
+      loadProgress()
+    }
+  }, [user])
+
+  const loadCourses = async () => {
+    const { data } = await supabase.from('courses').select('*').order('created_at', { ascending: false })
+    if (data) setCourses(data)
+  }
+
+  const loadEnrollments = async () => {
+    const { data } = await supabase.from('enrollments').select('course_id').eq('user_id', user.id)
+    if (data) setEnrollments(data.map(e => e.course_id))
+  }
+
+  const loadProgress = async () => {
+    const { data } = await supabase.from('progress').select('module_id').eq('user_id', user.id)
+    if (data) setProgress(data.map(p => p.module_id))
+  }
+
+  const loadModules = async (courseId) => {
+    const { data } = await supabase.from('modules').select('*').eq('course_id', courseId).order('sort_order')
+    return data || []
+  }
+
+  const handleLogin = (u) => setUser(u)
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setSelectedCourse(null)
+    setSelectedModule(null)
+    setPage('catalog')
+  }
+
+  const isEnrolled = (courseId) => enrollments.includes(courseId)
+
+  const enroll = async (courseId) => {
+    if (isEnrolled(courseId)) return
+    await supabase.from('enrollments').insert({ user_id: user.id, course_id: courseId })
+    setEnrollments([...enrollments, courseId])
+  }
+
+  const completeMod = async (moduleId) => {
+    if (progress.includes(moduleId)) return
+    await supabase.from('progress').insert({ user_id: user.id, module_id: moduleId })
+    setProgress([...progress, moduleId])
+  }
+
+  const addCourse = async (form) => {
+    const { data, error } = await supabase.from('courses').insert({
+      title: form.title,
+      description: form.description,
+      category: form.category,
+      level: form.level,
+      duration: form.duration,
+      image_url: form.image_url,
+      created_by: user.id,
+    }).select().single()
+    if (data) {
+      setCourses([data, ...courses])
+      setShowCreateCourse(false)
+    }
+  }
+
+  const addModule = async (mod) => {
+    if (!selectedCourse) return
+    const existingModules = selectedCourse.modules || []
+    const { data, error } = await supabase.from('modules').insert({
+      course_id: selectedCourse.id,
+      title: mod.title,
+      type: mod.type,
+      url: mod.url || null,
+      duration: mod.duration || null,
+      file_name: mod.file_name || null,
+      file_size: mod.file_size || null,
+      content: mod.content || null,
+      sort_order: existingModules.length,
+    }).select().single()
+    if (data) {
+      const updatedModules = [...existingModules, data]
+      setSelectedCourse({ ...selectedCourse, modules: updatedModules })
+      setShowAddModule(false)
+    }
+  }
+
+  const deleteCourse = async (courseId) => {
+    await supabase.from('modules').delete().eq('course_id', courseId)
+    await supabase.from('enrollments').delete().eq('course_id', courseId)
+    await supabase.from('courses').delete().eq('id', courseId)
+    setCourses(courses.filter(c => c.id !== courseId))
+    setSelectedCourse(null)
+    setSelectedModule(null)
+  }
+
+  const openCourse = async (course) => {
+    const modules = await loadModules(course.id)
+    setSelectedCourse({ ...course, modules })
+    setSelectedModule(null)
+    setPage('course-detail')
+  }
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'
+
+  if (loading) return <div className="loading-screen">Cargando...</div>
+  if (!user) return <AuthScreen onLogin={handleLogin} />
+
+  const categories = ['Todos', ...new Set(courses.map(c => c.category).filter(Boolean))]
+  const filtered = courses.filter(c => {
+    const matchSearch = (c.title || '').toLowerCase().includes(search.toLowerCase()) || (c.description || '').toLowerCase().includes(search.toLowerCase())
+    const matchFilter = filter === 'Todos' || c.category === filter
+    return matchSearch && matchFilter
+  })
+  const myCourses = courses.filter(c => isEnrolled(c.id))
+
+  const courseProgress = selectedCourse?.modules
+    ? selectedCourse.modules.filter(m => progress.includes(m.id)).length / Math.max(1, selectedCourse.modules.length) * 100
+    : 0
+
+  const getModMeta = (mod) => {
+    if (mod.type === 'video') return `Video · ${mod.duration || ''}`
+    if (mod.type === 'slides') return `Presentación · ${mod.content?.length || 0} diapositivas`
+    if (mod.type === 'download') return `Descargable · ${mod.file_size || ''}`
+    if (mod.type === 'quiz') return `Evaluación · ${mod.content?.length || 0} preguntas`
+    return ''
+  }
+
+  return (
+    <div className="app">
+      {/* Nav */}
+      <nav className="nav">
+        <div className="nav-left">
+          <button className="nav-brand" onClick={() => { setPage('catalog'); setSelectedCourse(null); setSelectedModule(null) }}>
+            {Icons.logo} ProspectivaIA
+          </button>
+          <div className="nav-links">
+            <button className={`nav-link ${page === 'catalog' ? 'active' : ''}`} onClick={() => { setPage('catalog'); setSelectedCourse(null) }}>Catálogo</button>
+            <button className={`nav-link ${page === 'my-courses' ? 'active' : ''}`} onClick={() => { setPage('my-courses'); setSelectedCourse(null) }}>Mis Cursos</button>
+            <button className={`nav-link ${page === 'admin' ? 'active' : ''}`} onClick={() => { setPage('admin'); setSelectedCourse(null) }}>Administrar</button>
+          </div>
+        </div>
+        <div className="nav-right">
+          <div className="nav-user">
+            <div className="nav-avatar">{userName.charAt(0).toUpperCase()}</div>
+            <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</span>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={handleLogout}>{Icons.logout}</button>
+        </div>
+      </nav>
+
+      {/* Mobile nav */}
+      <div className="mobile-nav">
+        <div className="mobile-nav-inner">
+          <button className={`mobile-nav-btn ${page === 'catalog' ? 'active' : ''}`} onClick={() => { setPage('catalog'); setSelectedCourse(null) }}>{Icons.grid}<span>Catálogo</span></button>
+          <button className={`mobile-nav-btn ${page === 'my-courses' ? 'active' : ''}`} onClick={() => { setPage('my-courses'); setSelectedCourse(null) }}>{Icons.book}<span>Mis Cursos</span></button>
+          <button className={`mobile-nav-btn ${page === 'admin' ? 'active' : ''}`} onClick={() => { setPage('admin'); setSelectedCourse(null) }}>{Icons.edit}<span>Admin</span></button>
+        </div>
+      </div>
+
+      <main className="main">
+        {/* Catalog */}
+        {page === 'catalog' && (
+          <div className="fade-in">
+            <div className="hero">
+              <h1>Formación especializada<br />para auditores</h1>
+              <p>Cursos interactivos sobre normas internacionales, control interno, cumplimiento y más. Avanza a tu ritmo con material actualizado.</p>
+            </div>
+            <div className="search-bar">
+              {Icons.search}
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cursos..." />
+            </div>
+            <div className="filters">
+              {categories.map(c => (
+                <button key={c} className={`filter-chip ${filter === c ? 'active' : ''}`} onClick={() => setFilter(c)}>{c}</button>
+              ))}
+            </div>
+            <h3 className="section-title">{filter === 'Todos' ? 'Todos los cursos' : filter} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontFamily: 'var(--sans)', fontWeight: 400 }}>({filtered.length})</span></h3>
+            {filtered.length === 0 ? (
+              <div className="empty-state"><h3>Sin resultados</h3><p>Intenta con otra búsqueda.</p></div>
+            ) : (
+              <div className="courses-grid">
+                {filtered.map(course => (
+                  <div key={course.id} className="course-card" onClick={() => openCourse(course)}>
+                    <img className="course-card-img" src={course.image_url} alt="" onError={e => { e.target.style.background = 'var(--surface-alt)' }} />
+                    <div className="course-card-body">
+                      <div className="course-meta">
+                        <span className={`badge ${levelBadge(course.level)}`}>{course.level}</span>
+                        <span className="badge badge-neutral">{course.category}</span>
+                      </div>
+                      <div className="course-card-title">{course.title}</div>
+                      <div className="course-card-desc">{course.description}</div>
+                      <div className="course-card-footer">
+                        <span className="course-stat">{Icons.clock} {course.duration || '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Courses */}
+        {page === 'my-courses' && !selectedCourse && (
+          <div className="fade-in">
+            <h3 className="section-title" style={{ marginBottom: 24 }}>Mis Cursos</h3>
+            {myCourses.length === 0 ? (
+              <div className="empty-state">
+                <h3>Aún no tienes cursos</h3>
+                <p style={{ marginBottom: 20 }}>Explora el catálogo y empieza a aprender.</p>
+                <button className="btn btn-accent" onClick={() => setPage('catalog')}>Ver catálogo</button>
+              </div>
+            ) : (
+              <div className="courses-grid">
+                {myCourses.map(course => (
+                  <div key={course.id} className="course-card" onClick={() => openCourse(course)}>
+                    <img className="course-card-img" src={course.image_url} alt="" onError={e => { e.target.style.background = 'var(--surface-alt)' }} />
+                    <div className="course-card-body">
+                      <div className="course-meta">
+                        <span className={`badge ${levelBadge(course.level)}`}>{course.level}</span>
+                      </div>
+                      <div className="course-card-title">{course.title}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Admin */}
+        {page === 'admin' && !selectedCourse && (
+          <div className="fade-in">
+            <div className="admin-header">
+              <h3 className="section-title" style={{ marginBottom: 0 }}>Administrar Cursos</h3>
+              <button className="btn btn-accent btn-sm" onClick={() => setShowCreateCourse(true)}>{Icons.plus} Nuevo Curso</button>
+            </div>
+            {courses.length === 0 ? (
+              <div className="empty-state"><h3>No hay cursos</h3><p>Crea el primero.</p></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {courses.map(course => (
+                  <div key={course.id} className="module-item" style={{ cursor: 'default' }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="module-title">{course.title}</div>
+                      <div className="module-meta">{course.category} · {course.level}</div>
+                    </div>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openCourse(course)}>{Icons.edit} Editar</button>
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => { if (confirm('¿Eliminar este curso?')) deleteCourse(course.id) }}>{Icons.trash}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Course Detail */}
+        {page === 'course-detail' && selectedCourse && (
+          <div className="fade-in">
+            <div className="course-header">
+              <img src={selectedCourse.image_url} alt="" onError={e => { e.target.style.background = 'var(--surface-alt)' }} />
+              <button className="back-btn" onClick={() => { setSelectedCourse(null); setSelectedModule(null); setPage(page === 'course-detail' ? 'catalog' : page) }}>{Icons.back}</button>
+              <div className="course-header-overlay">
+                <h1>{selectedCourse.title}</h1>
+                <p>{selectedCourse.description}</p>
+              </div>
+            </div>
+
+            <div className="course-stats-bar">
+              <div className="stat">{Icons.clock} {selectedCourse.duration || '—'}</div>
+              <div className="stat">{Icons.book} {selectedCourse.modules?.length || 0} módulos</div>
+            </div>
+
+            {isEnrolled(selectedCourse.id) && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                  <span>Progreso</span><span style={{ fontWeight: 600 }}>{Math.round(courseProgress)}%</span>
+                </div>
+                <div className="progress-bar-wrap">
+                  <div className="progress-bar-fill" style={{ width: `${courseProgress}%` }} />
+                </div>
+              </div>
+            )}
+
+            {!isEnrolled(selectedCourse.id) && (
+              <button className="btn btn-accent" onClick={() => enroll(selectedCourse.id)} style={{ marginBottom: 24, width: '100%' }}>Inscribirse en este curso</button>
+            )}
+
+            {selectedModule && <ModuleContent mod={selectedModule} onComplete={completeMod} />}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 className="section-title" style={{ marginBottom: 0 }}>Contenido del curso</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowAddModule(true)}>{Icons.plus} Módulo</button>
+            </div>
+            <div className="modules-list">
+              {(!selectedCourse.modules || selectedCourse.modules.length === 0) && <div className="empty-state"><p>Este curso aún no tiene módulos.</p></div>}
+              {selectedCourse.modules?.map(mod => (
+                <div key={mod.id} className={`module-item ${selectedModule?.id === mod.id ? 'active' : ''}`}
+                  onClick={() => { if (isEnrolled(selectedCourse.id)) { setSelectedModule(mod) } else { enroll(selectedCourse.id).then(() => setSelectedModule(mod)) } }}>
+                  {getModIcon(mod.type)}
+                  <div className="module-info">
+                    <div className="module-title">{mod.title}</div>
+                    <div className="module-meta">{getModMeta(mod)}</div>
+                  </div>
+                  <div className={`module-check ${progress.includes(mod.id) ? 'done' : ''}`}>
+                    {progress.includes(mod.id) && Icons.check}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {showCreateCourse && <CreateCourseModal onClose={() => setShowCreateCourse(false)} onSave={addCourse} />}
+      {showAddModule && <AddModuleModal onClose={() => setShowAddModule(false)} onSave={addModule} />}
+    </div>
+  )
+}
