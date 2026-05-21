@@ -251,7 +251,7 @@ const authStyles = {
   logoWrap: {
     display: 'flex',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   logo: {
     height: 56,
@@ -462,7 +462,7 @@ function AuthScreen({ onLogin }) {
         </div>
 
         {/* Heading */}
-         <p style={{ ...authStyles.subtitle, marginBottom: 10, textAlign: 'center' }}>
+         <p style={{ ...authStyles.subtitle, marginBottom: 24, textAlign: 'center' }}>
           {mode === 'login'
             ? 'Impulsa el valor estratégico de la Gestión de Riesgos, Cumplimiento y Auditoría con Inteligencia Artificial aplicada.'
             : 'Regístrate para acceder al contenido.'}
