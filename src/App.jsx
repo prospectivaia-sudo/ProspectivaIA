@@ -464,11 +464,11 @@ function AuthScreen({ onLogin }) {
         {/* Heading */}
          <p style={{ ...authStyles.subtitle, marginBottom: 10, textAlign: 'center' }}>
           {mode === 'login'
-            ? 'Impulsa el Valor Estratégico de la Gestión de Riesgos, Cumplimiento y Auditoría con Inteligencia Artificial Aplicada.'
+            ? 'Impulsa el valor estratégico de la Gestión de Riesgos, Cumplimiento y Auditoría con Inteligencia Artificial aplicada.'
             : 'Regístrate para acceder al contenido.'}
         </p>
         <h2 style={{ ...authStyles.title, marginBottom: 28 }}>
-          {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+          {mode === 'login' ? '¡Comencemos!' : 'Crear cuenta'}
         </h2>
 
         {/* Error */}
