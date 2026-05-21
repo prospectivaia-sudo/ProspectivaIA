@@ -397,6 +397,8 @@ function AuthScreen({ onLogin }) {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [confirmEmail, setConfirmEmail] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const [btnHover, setBtnHover] = useState(false)
   const [visible, setVisible] = useState(false)
@@ -429,7 +431,10 @@ function AuthScreen({ onLogin }) {
           options: { data: { full_name: name } }
         })
         if (err) throw err
-        if (data.user) onLogin(data.user)
+        // Show email confirmation screen instead of auto-login
+        setConfirmEmail(true)
+        setLoading(false)
+        return
       } else {
         const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
         if (err) throw err
@@ -437,6 +442,21 @@ function AuthScreen({ onLogin }) {
       }
     } catch (err) {
       setError(err.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : err.message || 'Error al conectar.')
+    }
+    setLoading(false)
+  }
+
+  const handleResetPassword = async () => {
+    setError('')
+    if (!email) return setError('Ingresa tu correo electrónico.')
+    if (!email.includes('@')) return setError('Ingresa un correo válido.')
+    setLoading(true)
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email)
+      if (err) throw err
+      setResetSent(true)
+    } catch (err) {
+      setError(err.message || 'Error al enviar el correo de recuperación.')
     }
     setLoading(false)
   }
@@ -456,6 +476,58 @@ function AuthScreen({ onLogin }) {
         transform: visible ? 'translateY(0)' : 'translateY(16px)',
         transition: 'opacity 0.45s cubic-bezier(0.22,1,0.36,1), transform 0.45s cubic-bezier(0.22,1,0.36,1)',
       }}>
+        {/* Email Confirmation Screen */}
+        {confirmEmail || resetSent ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: resetSent
+                ? 'linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%)'
+                : 'linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 24px',
+            }}>
+              {resetSent ? (
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1565c0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              ) : (
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00897b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <polyline points="22,4 12,13 2,4" />
+                </svg>
+              )}
+            </div>
+            <h2 style={{ ...authStyles.title, marginBottom: 12, fontSize: 24 }}>
+              {resetSent ? '¡Correo enviado!' : '¡Revisa tu correo!'}
+            </h2>
+            <p style={{ ...authStyles.subtitle, marginBottom: 8 }}>
+              {resetSent
+                ? 'Hemos enviado instrucciones para restablecer tu contraseña a:'
+                : 'Hemos enviado un enlace de verificación a:'}
+            </p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: '#0a1628', marginBottom: 20, wordBreak: 'break-all' }}>
+              {email}
+            </p>
+            <p style={{ ...authStyles.subtitle, marginBottom: 28, fontSize: 13, lineHeight: 1.6 }}>
+              {resetSent
+                ? 'Haz clic en el enlace del correo para crear una nueva contraseña. Si no lo ves, revisa tu carpeta de spam o correo no deseado.'
+                : 'Haz clic en el enlace del correo para activar tu cuenta. Si no lo ves, revisa tu carpeta de spam o correo no deseado.'}
+            </p>
+            <button
+              style={{ ...authStyles.submitBtn, marginTop: 0 }}
+              onClick={() => { setConfirmEmail(false); setResetSent(false); setMode('login'); setEmail(''); setPassword(''); setName(''); setError('') }}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
+            >
+              Ir a Iniciar sesión
+            </button>
+            <div style={authStyles.footer}>
+              Anticipa · Controla · Previene
+            </div>
+          </div>
+        ) : (<>
         {/* Logo */}
         <div style={authStyles.logoWrap}>
           <img src={logoSrc} alt="Prospectiva IA" style={authStyles.logo} />
@@ -465,10 +537,12 @@ function AuthScreen({ onLogin }) {
          <p style={{ ...authStyles.subtitle, marginBottom: 24, textAlign: 'center' }}>
           {mode === 'login'
             ? 'Impulsa el valor estratégico de la Gestión de Riesgos, Cumplimiento y Auditoría con Inteligencia Artificial aplicada.'
+            : mode === 'forgot'
+            ? 'Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.'
             : 'Regístrate para acceder al contenido.'}
         </p>
         <h2 style={{ ...authStyles.title, marginBottom: 28 }}>
-          {mode === 'login' ? '¡Comencemos!' : 'Crear cuenta'}
+          {mode === 'login' ? '¡Comencemos!' : mode === 'forgot' ? 'Recuperar contraseña' : 'Crear cuenta'}
         </h2>
 
         {/* Error */}
@@ -504,6 +578,7 @@ function AuthScreen({ onLogin }) {
         </div>
 
         {/* Password */}
+        {mode !== 'forgot' && (
         <div style={authStyles.formGroup}>
           <label style={authStyles.label}>Contraseña</label>
           <div style={authStyles.inputWrap}>
@@ -526,7 +601,15 @@ function AuthScreen({ onLogin }) {
               {showPw ? Icons.eyeOff : Icons.eye}
             </button>
           </div>
+          {mode === 'login' && (
+            <div style={{ textAlign: 'right', marginTop: 8 }}>
+              <button style={{ ...authStyles.switchBtn, fontSize: 13, color: '#6b7a8d' }} onClick={() => { setMode('forgot'); setError('') }}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
         </div>
+        )}
 
         {/* Submit */}
         <button
@@ -535,7 +618,7 @@ function AuthScreen({ onLogin }) {
             ...(btnHover && !loading ? authStyles.submitBtnHover : {}),
             ...(loading ? { opacity: 0.7, cursor: 'wait' } : {}),
           }}
-          onClick={handleSubmit}
+          onClick={mode === 'forgot' ? handleResetPassword : handleSubmit}
           disabled={loading}
           onMouseEnter={() => setBtnHover(true)}
           onMouseLeave={() => setBtnHover(false)}
@@ -547,7 +630,7 @@ function AuthScreen({ onLogin }) {
               </svg>
               Cargando...
             </span>
-          ) : mode === 'login' ? 'Iniciar sesión' : 'Crear Cuenta'}
+          ) : mode === 'login' ? 'Iniciar sesión' : mode === 'forgot' ? 'Enviar enlace de recuperación' : 'Crear Cuenta'}
         </button>
 
         {/* Switch mode */}
@@ -556,6 +639,12 @@ function AuthScreen({ onLogin }) {
             <>¿No tienes cuenta?{' '}
               <button style={authStyles.switchBtn} onClick={() => { setMode('register'); setError('') }}>
                 Regístrate
+              </button>
+            </>
+          ) : mode === 'forgot' ? (
+            <>
+              <button style={authStyles.switchBtn} onClick={() => { setMode('login'); setError('') }}>
+                ← Volver a Iniciar sesión
               </button>
             </>
           ) : (
@@ -571,6 +660,7 @@ function AuthScreen({ onLogin }) {
         <div style={authStyles.footer}>
           Anticipa · Controla · Previene
         </div>
+        </>)}
       </div>
 
       {/* Spinner keyframe (injected once) */}
