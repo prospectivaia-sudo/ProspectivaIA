@@ -251,7 +251,7 @@ const authStyles = {
   logoWrap: {
     display: 'flex',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   logo: {
     height: 56,
