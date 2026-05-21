@@ -464,7 +464,7 @@ function AuthScreen({ onLogin }) {
         {/* Heading */}
          <p style={{ ...authStyles.subtitle, marginBottom: 10, textAlign: 'center' }}>
           {mode === 'login'
-            ? 'Impulsa el valor estratégico de de auditoría, cumplimiento y gestión de riesgos con inteligencia artificial aplicada.'
+            ? 'Impulsa el valor estratégico de Auditoría, Cumplimiento y Gestión de Riesgos con Inteligencia Artificial aplicada.'
             : 'Regístrate para acceder al contenido.'}
         </p>
         <h2 style={{ ...authStyles.title, marginBottom: 28 }}>
