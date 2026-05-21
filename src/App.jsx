@@ -535,6 +535,24 @@ function AuthScreen({ onLogin }) {
           <img src={logoSrc} alt="Prospectiva IA" style={authStyles.logo} />
         </div>
 
+        {/* Beta Badge */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: 16,
+        }}>
+          <span style={{
+            background: 'linear-gradient(135deg, #00b4d8, #48cae4)',
+            color: '#0a1628',
+            fontWeight: 700,
+            fontSize: 10,
+            padding: '3px 12px',
+            borderRadius: 20,
+            textTransform: 'uppercase',
+            letterSpacing: 1.2,
+            fontFamily: 'system-ui, sans-serif',
+          }}>Versión Beta</span>
+        </div>
+
         {/* Heading */}
          <p style={{ ...authStyles.subtitle, marginBottom: 24, textAlign: 'center' }}>
           {mode === 'login'
@@ -1059,10 +1077,146 @@ export default function App() {
         {/* Catalog */}
         {page === 'catalog' && (
           <div className="fade-in">
-            <div className="hero">
-              <h1>Formación especializada<br />para auditores</h1>
-              <p>Cursos interactivos sobre normas internacionales, control interno, cumplimiento y más. Avanza a tu ritmo con material actualizado.</p>
+            {/* Beta Banner */}
+            <div style={{
+              background: 'linear-gradient(90deg, #0a1628 0%, #1a3a5c 100%)',
+              color: '#fff',
+              textAlign: 'center',
+              padding: '8px 16px',
+              fontSize: 13,
+              fontFamily: 'var(--sans)',
+              borderRadius: 12,
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}>
+              <span style={{
+                background: 'linear-gradient(135deg, #00b4d8, #48cae4)',
+                color: '#0a1628',
+                fontWeight: 700,
+                fontSize: 11,
+                padding: '2px 10px',
+                borderRadius: 20,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}>Beta</span>
+              Estás usando una versión preliminar. Algunas funcionalidades pueden cambiar o no estar disponibles.
             </div>
+
+            {/* Hero Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0a1628 0%, #1a3a5c 40%, #1b6b93 70%, #48cae4 100%)',
+              borderRadius: 20,
+              padding: '48px 40px 44px',
+              marginBottom: 32,
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              {/* Decorative circles */}
+              <div style={{
+                position: 'absolute', right: -40, top: -40,
+                width: 280, height: 280, borderRadius: '50%',
+                background: 'rgba(72,202,228,0.12)',
+                border: '1px solid rgba(72,202,228,0.15)',
+              }} />
+              <div style={{
+                position: 'absolute', right: 60, bottom: -60,
+                width: 180, height: 180, borderRadius: '50%',
+                background: 'rgba(0,180,216,0.08)',
+                border: '1px solid rgba(0,180,216,0.1)',
+              }} />
+              <h1 style={{
+                fontFamily: 'var(--serif, "DM Serif Display", serif)',
+                fontSize: 32,
+                fontWeight: 400,
+                color: '#fff',
+                marginBottom: 14,
+                lineHeight: 1.25,
+                position: 'relative',
+                zIndex: 1,
+                maxWidth: 650,
+              }}>
+                Impulsa el valor estratégico de la Gestión de Riesgos, Cumplimiento y Auditoría con Inteligencia Artificial aplicada.
+              </h1>
+              <p style={{
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: 17,
+                fontFamily: 'var(--sans)',
+                position: 'relative',
+                zIndex: 1,
+                maxWidth: 550,
+                lineHeight: 1.5,
+              }}>
+                Selecciona el tópico por el cual te gustaría comenzar
+              </p>
+            </div>
+
+            {/* Topic Cards */}
+            <h3 className="section-title" style={{ marginBottom: 20 }}>Tópicos disponibles</h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: 16,
+              marginBottom: 40,
+            }}>
+              {[
+                { title: 'Clustering con K-Means', desc: 'Machine Learning no supervisado aplicado a auditoría: segmentación y detección de patrones.', icon: '🔵', color: '#e3f2fd', border: '#90caf9' },
+                { title: 'Detección con Autoencoder', desc: 'Machine Learning no supervisado aplicado a auditoría: reconstrucción y anomalías.', icon: '🟣', color: '#ede7f6', border: '#b39ddb' },
+                { title: 'Anomalías en Series de Tiempo', desc: 'Detección de comportamientos atípicos en datos temporales financieros y operacionales.', icon: '🔴', color: '#fce4ec', border: '#ef9a9a' },
+                { title: 'Análisis de Grafos y Redes', desc: 'Identificación de relaciones ocultas y circuitos sospechosos en datos transaccionales.', icon: '🟢', color: '#e8f5e9', border: '#a5d6a7' },
+                { title: 'NLP para Análisis de Contratos', desc: 'Procesamiento de lenguaje natural aplicado a revisión y auditoría de documentos legales.', icon: '🟠', color: '#fff3e0', border: '#ffcc80' },
+                { title: 'Scoring de Riesgo con IA', desc: 'Modelos predictivos para priorizar auditorías según nivel de riesgo estimado.', icon: '🔷', color: '#e0f7fa', border: '#80deea' },
+              ].map((topic, i) => (
+                <div key={i} style={{
+                  background: '#fff',
+                  border: `1.5px solid ${topic.border}`,
+                  borderRadius: 16,
+                  padding: '24px 22px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${topic.border}44` }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                    background: `linear-gradient(90deg, ${topic.border}, ${topic.color})`,
+                  }} />
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>{topic.icon}</div>
+                  <div style={{
+                    fontFamily: 'var(--serif, "DM Serif Display", serif)',
+                    fontSize: 17,
+                    fontWeight: 400,
+                    color: '#0a1628',
+                    marginBottom: 8,
+                    lineHeight: 1.3,
+                  }}>{topic.title}</div>
+                  <div style={{
+                    fontSize: 13,
+                    color: '#6b7a8d',
+                    lineHeight: 1.5,
+                  }}>{topic.desc}</div>
+                  <div style={{
+                    marginTop: 14,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#1b6b93',
+                  }}>
+                    Próximamente
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Existing courses section */}
             <div className="search-bar">
               {Icons.search}
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cursos..." />
