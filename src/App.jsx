@@ -463,11 +463,11 @@ function AuthScreen({ onLogin }) {
 
         {/* Heading */}
         <h2 style={authStyles.title}>
-          {mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+          {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
         </h2>
         <p style={authStyles.subtitle}>
           {mode === 'login'
-            ? 'Accede a tus cursos y continúa aprendiendo.'
+            ? 'Potencia tu gestión de riesgos, cumplimiento y auditoría con inteligencia artificial aplicada'
             : 'Regístrate para acceder al contenido.'}
         </p>
 
