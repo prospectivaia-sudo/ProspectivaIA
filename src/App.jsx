@@ -467,7 +467,7 @@ function AuthScreen({ onLogin }) {
         </h2>
         <p style={authStyles.subtitle}>
           {mode === 'login'
-            ? 'Potencia tu gestión de riesgos, cumplimiento y auditoría con inteligencia artificial aplicada'
+            ? 'Potencia la gestión de riesgos, el cumplimiento y la auditoría con inteligencia artificial aplicada.'
             : 'Regístrate para acceder al contenido.'}
         </p>
 
