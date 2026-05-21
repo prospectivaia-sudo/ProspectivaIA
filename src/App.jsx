@@ -452,7 +452,9 @@ function AuthScreen({ onLogin }) {
     if (!email.includes('@')) return setError('Ingresa un correo válido.')
     setLoading(true)
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email)
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      })
       if (err) throw err
       setResetSent(true)
     } catch (err) {
@@ -672,6 +674,159 @@ function AuthScreen({ onLogin }) {
   )
 }
 
+// ── Update Password Screen (after reset link) ──
+function UpdatePasswordScreen({ onDone }) {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [focusedField, setFocusedField] = useState(null)
+  const [btnHover, setBtnHover] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 50)
+    return () => clearTimeout(t)
+  }, [])
+
+  const handleUpdate = async () => {
+    setError('')
+    if (!password || !confirm) return setError('Completa ambos campos.')
+    if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
+    if (password !== confirm) return setError('Las contraseñas no coinciden.')
+    setLoading(true)
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password })
+      if (err) throw err
+      setSuccess(true)
+    } catch (err) {
+      setError(err.message || 'Error al actualizar la contraseña.')
+    }
+    setLoading(false)
+  }
+
+  const inputStyle = (field) => ({
+    ...authStyles.input,
+    ...(focusedField === field ? authStyles.inputFocus : {}),
+  })
+
+  return (
+    <div style={authStyles.wrapper}>
+      <div style={authStyles.bgOrb1} />
+      <div style={authStyles.bgOrb2} />
+      <div style={{
+        ...authStyles.card,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(16px)',
+        transition: 'opacity 0.45s cubic-bezier(0.22,1,0.36,1), transform 0.45s cubic-bezier(0.22,1,0.36,1)',
+      }}>
+        <div style={authStyles.logoWrap}>
+          <img src={logoSrc} alt="Prospectiva IA" style={authStyles.logo} />
+        </div>
+
+        {success ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 24px',
+            }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h2 style={{ ...authStyles.title, marginBottom: 12, fontSize: 24 }}>¡Contraseña actualizada!</h2>
+            <p style={{ ...authStyles.subtitle, marginBottom: 28 }}>
+              Tu contraseña se ha cambiado exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.
+            </p>
+            <button
+              style={authStyles.submitBtn}
+              onClick={onDone}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
+            >
+              Continuar
+            </button>
+          </div>
+        ) : (
+          <>
+            <p style={{ ...authStyles.subtitle, marginBottom: 24, textAlign: 'center' }}>
+              Ingresa tu nueva contraseña para completar la recuperación de tu cuenta.
+            </p>
+            <h2 style={{ ...authStyles.title, marginBottom: 28 }}>Nueva contraseña</h2>
+
+            {error && <div style={authStyles.error}>{error}</div>}
+
+            <div style={authStyles.formGroup}>
+              <label style={authStyles.label}>Nueva contraseña</label>
+              <div style={authStyles.inputWrap}>
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  style={{ ...inputStyle('password'), paddingRight: 48 }}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
+                />
+                <button style={authStyles.togglePw} onClick={() => setShowPw(!showPw)} type="button" tabIndex={-1}>
+                  {showPw ? Icons.eyeOff : Icons.eye}
+                </button>
+              </div>
+            </div>
+
+            <div style={authStyles.formGroup}>
+              <label style={authStyles.label}>Confirmar contraseña</label>
+              <input
+                type={showPw ? 'text' : 'password'}
+                style={inputStyle('confirm')}
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                placeholder="Repite la contraseña"
+                onKeyDown={e => e.key === 'Enter' && handleUpdate()}
+                onFocus={() => setFocusedField('confirm')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </div>
+
+            <button
+              style={{
+                ...authStyles.submitBtn,
+                ...(btnHover && !loading ? authStyles.submitBtnHover : {}),
+                ...(loading ? { opacity: 0.7, cursor: 'wait' } : {}),
+              }}
+              onClick={handleUpdate}
+              disabled={loading}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
+            >
+              {loading ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                  </svg>
+                  Actualizando...
+                </span>
+              ) : 'Guardar nueva contraseña'}
+            </button>
+          </>
+        )}
+
+        <div style={authStyles.footer}>
+          Anticipa · Controla · Previene
+        </div>
+      </div>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
+      `}</style>
+    </div>
+  )
+}
+
 // ── Helper functions ──
 const getModIcon = (type) => {
   if (type === 'video') return <div className="module-icon video">{Icons.play}</div>
@@ -691,6 +846,7 @@ const levelBadge = (level) => {
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const [page, setPage] = useState('catalog')
   const [courses, setCourses] = useState([])
   const [enrollments, setEnrollments] = useState([])
@@ -704,13 +860,25 @@ export default function App() {
 
   // Check auth on load
   useEffect(() => {
+    // Detect recovery from URL hash (fallback for when event fires before listener)
+    const hash = window.location.hash
+    if (hash && hash.includes('type=recovery')) {
+      setRecoveryMode(true)
+    }
+
+    // Set up listener BEFORE getSession so we don't miss events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null)
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true)
+      }
+    })
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -832,6 +1000,7 @@ export default function App() {
       <div style={{ color: '#6b7a8d', fontSize: 14 }}>Cargando...</div>
     </div>
   )
+  if (recoveryMode) return <UpdatePasswordScreen onDone={() => { setRecoveryMode(false); window.location.hash = '' }} />
   if (!user) return <AuthScreen onLogin={handleLogin} />
 
   const categories = ['Todos', ...new Set(courses.map(c => c.category).filter(Boolean))]
