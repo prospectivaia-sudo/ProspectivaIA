@@ -462,14 +462,14 @@ function AuthScreen({ onLogin }) {
         </div>
 
         {/* Heading */}
-        <h2 style={authStyles.title}>
-          {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
-        </h2>
-        <p style={authStyles.subtitle}>
+         <p style={{ ...authStyles.subtitle, marginBottom: 10 }}>
           {mode === 'login'
-            ? 'Potencia la gestión de riesgos, el cumplimiento y la auditoría con inteligencia artificial aplicada.'
+            ? 'POTENCIA LA GESTIÓN DE RIESGOS, EL CUMPLIMIENTO Y LA AUDITORÍA CON INTELIGENCIA ARTIFICAL APLICADA.'
             : 'Regístrate para acceder al contenido.'}
         </p>
+        <h2 style={{ ...authStyles.title, marginBottom: 28 }}>
+          {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+        </h2>
 
         {/* Error */}
         {error && <div style={authStyles.error}>{error}</div>}
