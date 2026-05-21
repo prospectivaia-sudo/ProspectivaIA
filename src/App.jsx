@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { Icons } from './components/Icons'
+import logoSrc from './assets/Logo_Prospectiva_IA_Color_tagline_.jpg'
 
 // ── Slide Viewer ──
 function SlideViewer({ slides }) {
@@ -206,6 +207,188 @@ function AddModuleModal({ onClose, onSave }) {
 }
 
 // ── Auth Screen ──
+const authStyles = {
+  wrapper: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px 16px',
+    background: 'linear-gradient(145deg, #f0f4f8 0%, #e8edf3 40%, #dce4ed 100%)',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bgOrb1: {
+    position: 'absolute',
+    width: 420,
+    height: 420,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(0,180,216,0.08) 0%, transparent 70%)',
+    top: '-10%',
+    right: '-8%',
+    pointerEvents: 'none',
+  },
+  bgOrb2: {
+    position: 'absolute',
+    width: 320,
+    height: 320,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(0,33,71,0.06) 0%, transparent 70%)',
+    bottom: '-5%',
+    left: '-5%',
+    pointerEvents: 'none',
+  },
+  card: {
+    width: '100%',
+    maxWidth: 420,
+    background: '#ffffff',
+    borderRadius: 20,
+    padding: '40px 36px 36px',
+    boxShadow: '0 4px 32px rgba(0,33,71,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+    position: 'relative',
+    zIndex: 1,
+  },
+  logoWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    height: 56,
+    width: 'auto',
+    objectFit: 'contain',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 700,
+    color: '#0a1628',
+    marginBottom: 6,
+    fontFamily: "'DM Serif Display', Georgia, serif",
+    letterSpacing: '-0.3px',
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#6b7a8d',
+    marginBottom: 28,
+    lineHeight: 1.4,
+  },
+  label: {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: '#3a4a5c',
+    marginBottom: 7,
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  input: {
+    width: '100%',
+    padding: '13px 16px',
+    border: '1.5px solid #dde2e8',
+    borderRadius: 10,
+    fontSize: 15,
+    color: '#1a2332',
+    background: '#fafbfc',
+    outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+    boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  },
+  inputFocus: {
+    borderColor: '#00b4d8',
+    boxShadow: '0 0 0 3px rgba(0,180,216,0.1)',
+  },
+  inputWrap: {
+    position: 'relative',
+  },
+  togglePw: {
+    position: 'absolute',
+    right: 14,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#8a97a8',
+    padding: 4,
+    display: 'flex',
+    alignItems: 'center',
+    transition: 'color 0.15s',
+  },
+  submitBtn: {
+    width: '100%',
+    padding: '14px 20px',
+    background: '#0a1628',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: 12,
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: 'pointer',
+    marginTop: 8,
+    transition: 'background 0.2s, transform 0.1s, box-shadow 0.2s',
+    letterSpacing: '0.01em',
+    fontFamily: 'inherit',
+  },
+  submitBtnHover: {
+    background: '#152238',
+    boxShadow: '0 4px 16px rgba(10,22,40,0.18)',
+  },
+  switchRow: {
+    textAlign: 'center',
+    marginTop: 22,
+    fontSize: 14,
+    color: '#6b7a8d',
+  },
+  switchBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#002147',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontSize: 14,
+    textDecoration: 'none',
+    padding: 0,
+    transition: 'color 0.15s',
+    fontFamily: 'inherit',
+  },
+  error: {
+    background: '#fef2f2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
+    borderRadius: 10,
+    padding: '10px 14px',
+    fontSize: 13,
+    marginBottom: 18,
+    lineHeight: 1.4,
+  },
+  divider: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    margin: '24px 0 20px',
+    color: '#a0aab5',
+    fontSize: 12,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    background: '#e5e9ee',
+  },
+  footer: {
+    textAlign: 'center',
+    marginTop: 28,
+    fontSize: 12,
+    color: '#a0aab5',
+    lineHeight: 1.5,
+  },
+}
+
 function AuthScreen({ onLogin }) {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
@@ -214,6 +397,21 @@ function AuthScreen({ onLogin }) {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [focusedField, setFocusedField] = useState(null)
+  const [btnHover, setBtnHover] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 50)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Reset animation on mode change
+  useEffect(() => {
+    setVisible(false)
+    const t = setTimeout(() => setVisible(true), 30)
+    return () => clearTimeout(t)
+  }, [mode])
 
   const handleSubmit = async () => {
     setError('')
@@ -243,35 +441,143 @@ function AuthScreen({ onLogin }) {
     setLoading(false)
   }
 
+  const inputStyle = (field) => ({
+    ...authStyles.input,
+    ...(focusedField === field ? authStyles.inputFocus : {}),
+  })
+
   return (
-    <div className="auth-wrapper">
-      <div className="auth-card fade-in">
-        <div className="auth-logo">{Icons.logo} ProspectivaIA</div>
-        <div className="auth-subtitle">Plataforma de formación para auditores</div>
-        <h2>{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
-        <p className="desc">{mode === 'login' ? 'Accede a tus cursos y continúa aprendiendo.' : 'Regístrate para acceder al contenido.'}</p>
-        {error && <div className="auth-error">{error}</div>}
+    <div style={authStyles.wrapper}>
+      <div style={authStyles.bgOrb1} />
+      <div style={authStyles.bgOrb2} />
+      <div style={{
+        ...authStyles.card,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(16px)',
+        transition: 'opacity 0.45s cubic-bezier(0.22,1,0.36,1), transform 0.45s cubic-bezier(0.22,1,0.36,1)',
+      }}>
+        {/* Logo */}
+        <div style={authStyles.logoWrap}>
+          <img src={logoSrc} alt="Prospectiva IA" style={authStyles.logo} />
+        </div>
+
+        {/* Heading */}
+        <h2 style={authStyles.title}>
+          {mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+        </h2>
+        <p style={authStyles.subtitle}>
+          {mode === 'login'
+            ? 'Accede a tus cursos y continúa aprendiendo.'
+            : 'Regístrate para acceder al contenido.'}
+        </p>
+
+        {/* Error */}
+        {error && <div style={authStyles.error}>{error}</div>}
+
+        {/* Name field (register only) */}
         {mode === 'register' && (
-          <div className="form-group"><label>Nombre completo</label><input value={name} onChange={e => setName(e.target.value)} placeholder="Juan Pérez" /></div>
+          <div style={authStyles.formGroup}>
+            <label style={authStyles.label}>Nombre completo</label>
+            <input
+              style={inputStyle('name')}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Juan Pérez"
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => setFocusedField(null)}
+            />
+          </div>
         )}
-        <div className="form-group"><label>Correo electrónico</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com" /></div>
-        <div className="form-group">
-          <label>Contraseña</label>
-          <div className="input-wrap">
-            <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
-            <button className="toggle-pw" onClick={() => setShowPw(!showPw)} type="button">{showPw ? Icons.eyeOff : Icons.eye}</button>
+
+        {/* Email */}
+        <div style={authStyles.formGroup}>
+          <label style={authStyles.label}>Correo electrónico</label>
+          <input
+            type="email"
+            style={inputStyle('email')}
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="correo@ejemplo.com"
+            onFocus={() => setFocusedField('email')}
+            onBlur={() => setFocusedField(null)}
+          />
+        </div>
+
+        {/* Password */}
+        <div style={authStyles.formGroup}>
+          <label style={authStyles.label}>Contraseña</label>
+          <div style={authStyles.inputWrap}>
+            <input
+              type={showPw ? 'text' : 'password'}
+              style={{ ...inputStyle('password'), paddingRight: 48 }}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
+            />
+            <button
+              style={authStyles.togglePw}
+              onClick={() => setShowPw(!showPw)}
+              type="button"
+              tabIndex={-1}
+            >
+              {showPw ? Icons.eyeOff : Icons.eye}
+            </button>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading} style={{ marginTop: 8 }}>
-          {loading ? 'Cargando...' : mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+
+        {/* Submit */}
+        <button
+          style={{
+            ...authStyles.submitBtn,
+            ...(btnHover && !loading ? authStyles.submitBtnHover : {}),
+            ...(loading ? { opacity: 0.7, cursor: 'wait' } : {}),
+          }}
+          onClick={handleSubmit}
+          disabled={loading}
+          onMouseEnter={() => setBtnHover(true)}
+          onMouseLeave={() => setBtnHover(false)}
+        >
+          {loading ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+              </svg>
+              Cargando...
+            </span>
+          ) : mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
         </button>
-        <div className="auth-switch">
-          {mode === 'login'
-            ? <>¿No tienes cuenta? <button onClick={() => { setMode('register'); setError('') }}>Regístrate</button></>
-            : <>¿Ya tienes cuenta? <button onClick={() => { setMode('login'); setError('') }}>Inicia sesión</button></>
-          }
+
+        {/* Switch mode */}
+        <div style={authStyles.switchRow}>
+          {mode === 'login' ? (
+            <>¿No tienes cuenta?{' '}
+              <button style={authStyles.switchBtn} onClick={() => { setMode('register'); setError('') }}>
+                Regístrate
+              </button>
+            </>
+          ) : (
+            <>¿Ya tienes cuenta?{' '}
+              <button style={authStyles.switchBtn} onClick={() => { setMode('login'); setError('') }}>
+                Inicia sesión
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={authStyles.footer}>
+          Anticipa · Controla · Previene
         </div>
       </div>
+
+      {/* Spinner keyframe (injected once) */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
+      `}</style>
     </div>
   )
 }
@@ -430,7 +736,12 @@ export default function App() {
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'
 
-  if (loading) return <div className="loading-screen">Cargando...</div>
+  if (loading) return (
+    <div className="loading-screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(145deg, #f0f4f8 0%, #e8edf3 40%, #dce4ed 100%)' }}>
+      <img src={logoSrc} alt="Prospectiva IA" style={{ height: 48, marginBottom: 20, opacity: 0.9 }} />
+      <div style={{ color: '#6b7a8d', fontSize: 14 }}>Cargando...</div>
+    </div>
+  )
   if (!user) return <AuthScreen onLogin={handleLogin} />
 
   const categories = ['Todos', ...new Set(courses.map(c => c.category).filter(Boolean))]
@@ -459,7 +770,7 @@ export default function App() {
       <nav className="nav">
         <div className="nav-left">
           <button className="nav-brand" onClick={() => { setPage('catalog'); setSelectedCourse(null); setSelectedModule(null) }}>
-            {Icons.logo} ProspectivaIA
+            <img src={logoSrc} alt="Prospectiva IA" style={{ height: 30, width: 'auto', objectFit: 'contain' }} />
           </button>
           <div className="nav-links">
             <button className={`nav-link ${page === 'catalog' ? 'active' : ''}`} onClick={() => { setPage('catalog'); setSelectedCourse(null) }}>Catálogo</button>
