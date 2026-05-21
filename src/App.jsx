@@ -547,7 +547,7 @@ function AuthScreen({ onLogin }) {
               </svg>
               Cargando...
             </span>
-          ) : mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+          ) : mode === 'login' ? 'Iniciar sesión' : 'Crear Cuenta'}
         </button>
 
         {/* Switch mode */}
