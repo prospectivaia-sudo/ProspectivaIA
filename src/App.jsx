@@ -114,7 +114,7 @@ const BLOG_CSS = `
 
 .pi-hero { background:linear-gradient(135deg,#0a1628 0%,#1a3a5c 42%,#1b6b93 72%,#48cae4 100%); color:#fff; }
 .pi-hero-inner { max-width:1180px; margin:0 auto; padding:54px 24px 48px; position:relative; overflow:hidden; }
-.pi-hero h1 { font-family:var(--serif); font-weight:400; font-size:clamp(28px,4.4vw,42px); line-height:1.15; margin:0 0 14px; max-width:760px; position:relative; z-index:1; }
+.pi-hero h1 { font-family:var(--serif); font-weight:400; font-size:clamp(28px,4.4vw,42px); line-height:1.15; margin:0 0 14px; max-width:1000px; position:relative; z-index:1; }
 .pi-hero p { font-size:clamp(15px,1.6vw,18px); color:rgba(255,255,255,.82); max-width:560px; line-height:1.55; margin:0; position:relative; z-index:1; }
 .pi-hero-eyebrow { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#9fe3f2; margin-bottom:16px; position:relative; z-index:1; }
 .pi-hero-orb { position:absolute; border-radius:50%; pointer-events:none; }
