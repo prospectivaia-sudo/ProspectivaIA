@@ -754,9 +754,7 @@ export default function App() {
           <div className="pi-hero-inner">
             <div className="pi-hero-orb" style={{ width: 320, height: 320, right: -60, top: -80, background: 'radial-gradient(circle, rgba(72,202,228,.18), transparent 70%)' }} />
             <div className="pi-hero-orb" style={{ width: 220, height: 220, right: 120, bottom: -120, background: 'radial-gradient(circle, rgba(0,180,216,.12), transparent 70%)' }} />
-            <span className="pi-hero-eyebrow">{I.spark} Riesgo · Cumplimiento · Auditoría con IA</span>
-            <h1>Publicaciones sobre auditoría e inteligencia artificial aplicada.</h1>
-            <p>Artículos, recursos, videos y experimentos para anticipar, controlar y prevenir el riesgo.</p>
+            <h1>Impulsa la gestión de riesgos, el cumplimiento normativo y la función de auditoría con inteligencia artificial aplicada.</h1>
           </div>
         </section>
       )}
