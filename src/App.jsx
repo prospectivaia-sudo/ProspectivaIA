@@ -754,7 +754,7 @@ export default function App() {
           <div className="pi-hero-inner">
             <div className="pi-hero-orb" style={{ width: 320, height: 320, right: -60, top: -80, background: 'radial-gradient(circle, rgba(72,202,228,.18), transparent 70%)' }} />
             <div className="pi-hero-orb" style={{ width: 220, height: 220, right: 120, bottom: -120, background: 'radial-gradient(circle, rgba(0,180,216,.12), transparent 70%)' }} />
-            <h1>Impulsa la gestión de riesgos, el cumplimiento normativo y la función de auditoría con inteligencia artificial aplicada.</h1>
+            <h1>IMPULSA LA GESTIÓN DE RIESGOS, EL CUMPLIMIENTO NORMATIVO Y LA FUNCIÓN DE AUDITORÍA CON INTELIGENCIA ARTIFICIAL APLICADA.</h1>
           </div>
         </section>
       )}
