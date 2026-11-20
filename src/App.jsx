@@ -8,6 +8,9 @@ import logoSrc from './assets/Logo_Prospectiva_IA_Color_tagline_.jpg'
    - Lectura 100% pública (sin cuenta obligatoria)
    - Publicar / editar / eliminar requiere sesión de administrador
      (reutiliza tu cuenta Supabase existente; ya no hay registro público)
+   - Seguridad: "admin" = usuario presente en la tabla public.admins,
+     verificado con la función is_admin() (RPC). La base de datos (RLS)
+     aplica la misma regla, así que la UI no es la única barrera.
    - Widget lateral de suscripción (nombre + correo)
    Requiere las tablas `posts` y `subscribers` y, opcionalmente, el
    bucket de Storage `media`. Ver SUPABASE_SETUP.sql.
@@ -57,33 +60,54 @@ const excerptFrom = (post, n = 160) => {
   return t.length > n ? t.slice(0, n).trim() + '…' : t
 }
 
+// ── Seguridad: sólo se aceptan URLs http(s); nada de javascript:, data:, etc. ──
+const isHttpUrl = (u) => {
+  if (!u || typeof u !== 'string') return false
+  try {
+    const { protocol } = new URL(u)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch { return false }
+}
+const safeUrl = (u) => (isHttpUrl(u) ? u : null)
+
 const firstImage = (post) =>
-  post.cover_image || (Array.isArray(post.images) && post.images[0]) || null
+  safeUrl(post.cover_image) || (Array.isArray(post.images) && post.images.find(isHttpUrl)) || null
+
+// Sólo se incrustan videos de estos dominios (evita iframes de sitios arbitrarios)
+const EMBED_HOSTS = ['www.youtube.com', 'youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com']
 
 const toEmbedUrl = (url) => {
   if (!url) return ''
   try {
-    if (url.includes('youtube.com/watch')) {
-      const v = new URL(url).searchParams.get('v')
-      return v ? `https://www.youtube.com/embed/${v}` : url
+    let out = url.trim()
+    if (out.includes('youtube.com/watch')) {
+      const v = new URL(out).searchParams.get('v')
+      out = v ? `https://www.youtube.com/embed/${encodeURIComponent(v)}` : out
+    } else if (out.includes('youtu.be/')) {
+      const id = out.split('youtu.be/')[1].split(/[?&#/]/)[0]
+      out = `https://www.youtube.com/embed/${encodeURIComponent(id)}`
+    } else if (out.includes('vimeo.com/') && !out.includes('player.')) {
+      const id = out.split('vimeo.com/')[1].split(/[?&#/]/)[0]
+      out = `https://player.vimeo.com/video/${encodeURIComponent(id)}`
     }
-    if (url.includes('youtu.be/')) {
-      const id = url.split('youtu.be/')[1].split(/[?&]/)[0]
-      return `https://www.youtube.com/embed/${id}`
-    }
-    if (url.includes('vimeo.com/') && !url.includes('player.')) {
-      const id = url.split('vimeo.com/')[1].split(/[?&]/)[0]
-      return `https://player.vimeo.com/video/${id}`
-    }
-    return url
-  } catch { return url }
+    const parsed = new URL(out)
+    return parsed.protocol === 'https:' && EMBED_HOSTS.includes(parsed.hostname) ? parsed.href : ''
+  } catch { return '' }
 }
+
+// ── Subida de imágenes: mismos límites que el bucket `media` (ver SUPABASE_SETUP.sql) ──
+const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
+const IMAGE_ACCEPT = Object.keys(IMAGE_TYPES).join(',')
+const MAX_IMAGE_MB = 5
 
 // Sube un archivo al bucket `media` de Supabase Storage y devuelve la URL pública
 const uploadFile = async (file) => {
-  const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+  const ext = IMAGE_TYPES[file.type]
+  if (!ext) throw new Error(`"${file.name}" no es un formato permitido. Usa JPG, PNG, WEBP o GIF.`)
+  if (file.size > MAX_IMAGE_MB * 1024 * 1024) throw new Error(`"${file.name}" supera el máximo de ${MAX_IMAGE_MB} MB.`)
+  // El nombre se genera aquí; nunca se usa el nombre original del archivo como ruta
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const { error } = await supabase.storage.from('media').upload(path, file, { upsert: false })
+  const { error } = await supabase.storage.from('media').upload(path, file, { upsert: false, contentType: file.type })
   if (error) throw error
   const { data } = supabase.storage.from('media').getPublicUrl(path)
   return data.publicUrl
@@ -212,10 +236,13 @@ function NewsletterCard({ onSubscribe }) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle | sending | ok | dup | error
   const [msg, setMsg] = useState('')
+  const [website, setWebsite] = useState('') // honeypot: invisible para personas, los bots lo llenan
 
   const submit = async () => {
+    if (status === 'sending') return
+    if (website) { setStatus('ok'); return } // bot: se simula éxito sin guardar nada
     if (!name.trim() || !email.trim()) { setStatus('error'); setMsg('Ingresa tu nombre y tu correo.'); return }
-    if (!email.includes('@')) { setStatus('error'); setMsg('Ingresa un correo válido.'); return }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.trim().length > 254) { setStatus('error'); setMsg('Ingresa un correo válido.'); return }
     setStatus('sending'); setMsg('')
     const res = await onSubscribe(name.trim(), email.trim())
     setStatus(res.status)
@@ -245,8 +272,10 @@ function NewsletterCard({ onSubscribe }) {
       <span className="pi-news-tag">{I.spark} Mantente al día</span>
       <h3>Recibe nuevas publicaciones</h3>
       <p>Análisis, recursos y novedades sobre auditoría, riesgo e IA aplicada, directo a tu correo.</p>
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre" onKeyDown={e => e.key === 'Enter' && submit()} />
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@correo.com" onKeyDown={e => e.key === 'Enter' && submit()} />
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre" maxLength={120} autoComplete="name" onKeyDown={e => e.key === 'Enter' && submit()} />
+      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@correo.com" maxLength={254} autoComplete="email" onKeyDown={e => e.key === 'Enter' && submit()} />
+      <input value={website} onChange={e => setWebsite(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true"
+        style={{ position: 'absolute', left: '-10000px', width: 1, height: 1, opacity: 0 }} name="website" />
       {msg && status === 'error' && <p className="pi-news-note" style={{ color: '#ffb3ab' }}>{msg}</p>}
       <button className="pi-news-btn" onClick={submit} disabled={status === 'sending'}>
         {status === 'sending'
@@ -332,9 +361,9 @@ function PostCard({ post, isAdmin, onOpen, onEdit, onDelete }) {
 // Vista de detalle
 // ──────────────────────────────────────────────────────────────
 function PostDetail({ post, isAdmin, onBack, onEdit, onDelete }) {
-  const cover = post.cover_image
+  const cover = safeUrl(post.cover_image)
   const embed = toEmbedUrl(post.video_url)
-  const bodyImages = Array.isArray(post.images) ? post.images.filter(u => u && u !== cover) : []
+  const bodyImages = Array.isArray(post.images) ? post.images.filter(u => isHttpUrl(u) && u !== cover) : []
   const fm = formatMeta(post.type)
   const paragraphs = (post.content || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
 
@@ -362,7 +391,17 @@ function PostDetail({ post, isAdmin, onBack, onEdit, onDelete }) {
         </div>
 
         {embed && (
-          <div className="pi-video-wrap"><iframe src={embed} title={post.title} allowFullScreen /></div>
+          <div className="pi-video-wrap">
+            <iframe
+              src={embed}
+              title={post.title}
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              referrerPolicy="strict-origin-when-cross-origin"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+              loading="lazy"
+              allowFullScreen
+            />
+          </div>
         )}
 
         <div className="pi-detail-content">
@@ -401,6 +440,12 @@ function Composer({ initial, onClose, onSave }) {
   const handleSave = async () => {
     setError('')
     if (!title.trim()) { setError('La publicación necesita un título.'); return }
+    if (title.trim().length > 300) { setError('El título no puede superar 300 caracteres.'); return }
+    if (!coverFile && coverUrl.trim() && !isHttpUrl(coverUrl.trim())) { setError('La URL de portada debe empezar con https://'); return }
+    const pastedUrls = bodyUrls.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
+    const badUrl = pastedUrls.find(u => !isHttpUrl(u))
+    if (badUrl) { setError(`URL de imagen no válida: ${badUrl}`); return }
+    if (videoUrl.trim() && !toEmbedUrl(videoUrl)) { setError('El video debe ser un enlace de YouTube o Vimeo.'); return }
     setSaving(true)
     try {
       let cover = coverUrl.trim()
@@ -408,7 +453,6 @@ function Composer({ initial, onClose, onSave }) {
 
       const uploaded = []
       for (const f of bodyFiles) uploaded.push(await uploadFile(f))
-      const pastedUrls = bodyUrls.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
       const images = [...(cover ? [cover] : []), ...uploaded, ...pastedUrls]
 
       await onSave({
@@ -462,15 +506,15 @@ function Composer({ initial, onClose, onSave }) {
         </div>
 
         <div className="form-group"><label>Imagen de portada</label>
-          <input type="file" accept="image/*" onChange={e => setCoverFile(e.target.files?.[0] || null)} />
+          <input type="file" accept={IMAGE_ACCEPT} onChange={e => setCoverFile(e.target.files?.[0] || null)} />
           <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="…o pega una URL de imagen" style={{ marginTop: 8 }} />
           {(coverFile || coverUrl) && (
-            <img src={coverFile ? URL.createObjectURL(coverFile) : coverUrl} alt="" style={{ marginTop: 10, width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10 }} onError={e => { e.target.style.display = 'none' }} />
+            <img src={coverFile ? URL.createObjectURL(coverFile) : (safeUrl(coverUrl.trim()) || '')} alt="" style={{ marginTop: 10, width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10 }} onError={e => { e.target.style.display = 'none' }} />
           )}
         </div>
 
         <div className="form-group"><label>Imágenes del cuerpo (opcional)</label>
-          <input type="file" accept="image/*" multiple onChange={e => setBodyFiles(Array.from(e.target.files || []))} />
+          <input type="file" accept={IMAGE_ACCEPT} multiple onChange={e => setBodyFiles(Array.from(e.target.files || []))} />
           {bodyFiles.length > 0 && <p style={{ fontSize: 12, color: 'var(--text-muted,#8a97a8)', margin: '6px 0 0' }}>{bodyFiles.length} archivo(s) listo(s) para subir.</p>}
           <textarea value={bodyUrls} onChange={e => setBodyUrls(e.target.value)} placeholder="…o pega URLs de imágenes, una por línea" style={{ marginTop: 8, minHeight: 70, fontSize: 13 }} />
         </div>
@@ -505,9 +549,21 @@ function AdminLoginModal({ onClose, onLoggedIn }) {
     try {
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) throw err
+      // Tener cuenta no basta: debe estar registrada en public.admins
+      const { data: admin, error: rpcErr } = await supabase.rpc('is_admin')
+      if (rpcErr || admin !== true) {
+        await supabase.auth.signOut()
+        throw new Error(rpcErr ? 'NO_RPC' : 'NOT_ADMIN')
+      }
       onLoggedIn(data.user)
     } catch (err) {
-      setError(err.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : (err.message || 'Error al conectar.'))
+      const m = err.message
+      setError(
+        m === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.'
+        : m === 'NOT_ADMIN' ? 'Esta cuenta no tiene permisos de administrador.'
+        : m === 'NO_RPC' ? 'No se pudo verificar el acceso de administrador. Revisa que se haya ejecutado SUPABASE_SETUP.sql.'
+        : (m || 'Error al conectar.')
+      )
       setLoading(false)
     }
   }
@@ -586,7 +642,7 @@ function UpdatePasswordModal({ onDone }) {
 
   const update = async () => {
     setError('')
-    if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
+    if (password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.')
     if (password !== confirm) return setError('Las contraseñas no coinciden.')
     setLoading(true)
     try {
@@ -614,7 +670,7 @@ function UpdatePasswordModal({ onDone }) {
             <h2 style={{ textAlign: 'center', marginBottom: 18 }}>Nueva contraseña</h2>
             {error && <div style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>{error}</div>}
             <div className="form-group"><label>Nueva contraseña</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
             </div>
             <div className="form-group"><label>Confirmar contraseña</label>
               <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repite la contraseña" onKeyDown={e => e.key === 'Enter' && update()} />
@@ -641,8 +697,21 @@ export default function App() {
   const [category, setCategory] = useState('Todas')
   const [showLogin, setShowLogin] = useState(false)
   const [composer, setComposer] = useState(null)  // null | {} (nuevo) | post (editar)
+  const [isAdmin, setIsAdmin] = useState(false)   // sólo true si is_admin() lo confirma
 
-  const isAdmin = !!user
+  // Verifica en la base de datos si la sesión actual es de un administrador.
+  // Una sesión sin permisos (p. ej. alguien que se registró por la API) se cierra.
+  useEffect(() => {
+    let cancelled = false
+    if (!user) { setIsAdmin(false); return }
+    supabase.rpc('is_admin').then(({ data, error }) => {
+      if (cancelled) return
+      const ok = !error && data === true
+      setIsAdmin(ok)
+      if (!ok && !recovery) supabase.auth.signOut()
+    })
+    return () => { cancelled = true }
+  }, [user, recovery])
 
   // Auth: detecta sesión existente y enlaces de recuperación (no obliga a nadie a iniciar sesión)
   useEffect(() => {
@@ -706,7 +775,7 @@ export default function App() {
     if (selected?.id === post.id) setSelected(null)
   }
 
-  const logout = async () => { await supabase.auth.signOut(); setUser(null); setComposer(null) }
+  const logout = async () => { await supabase.auth.signOut(); setUser(null); setIsAdmin(false); setComposer(null) }
 
   // Filtrado
   const filtered = posts.filter(p => {
