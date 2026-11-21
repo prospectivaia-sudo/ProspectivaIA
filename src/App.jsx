@@ -187,6 +187,27 @@ const toEmbedUrl = (url) => {
   } catch { return '' }
 }
 
+// ── Enlace externo de una publicación (documento, herramienta, recurso o fuente) ──
+const EXT_LABEL = { 'Documento': 'Ver documento', 'Herramienta': 'Probar herramienta', 'Recurso': 'Descargar recurso', 'Video': 'Ver en el sitio original' }
+const extLabel = (type) => EXT_LABEL[type] || 'Ver fuente'
+const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '') } catch { return '' } }
+const ExtIcon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17 17 7" /><path d="M8 7h9v9" /></svg>
+)
+
+// Convierte en enlaces las direcciones web escritas en el texto (sin usar HTML, sin riesgo de inyección)
+const URL_RE = /(https?:\/\/[^\s<>"']+)/g
+function linkify(text) {
+  return text.split(URL_RE).map((part, i) => {
+    if (i % 2 === 0) return part
+    const trail = (part.match(/[.,;:!?)\]]+$/) || [''])[0]   // no incluir la puntuación final en el enlace
+    const url = part.slice(0, part.length - trail.length)
+    return isHttpUrl(url)
+      ? <span key={i}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a>{trail}</span>
+      : part
+  })
+}
+
 // ── Subida de imágenes: mismos límites que el bucket `media` (ver SUPABASE_SETUP.sql) ──
 const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }
 const IMAGE_ACCEPT = Object.keys(IMAGE_TYPES).join(',')
@@ -279,16 +300,21 @@ const BLOG_CSS = `
 .pi-chip.active { background:var(--navy); border-color:var(--navy); color:#fff; }
 
 .pi-feed { display:flex; flex-direction:column; gap:22px; }
-.pi-card { background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; cursor:pointer; transition:transform .18s, box-shadow .18s; display:grid; grid-template-columns:200px 1fr; }
-.pi-card:hover { transform:translateY(-3px); box-shadow:0 14px 34px rgba(10,22,40,.10); }
-.pi-card.no-media { grid-template-columns:1fr; }
-.pi-card-media { position:relative; background:var(--navy); min-height:160px; }
-.pi-card-media img { width:100%; height:100%; object-fit:cover; display:block; }
-.pi-card-media .pi-play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
-.pi-card-media .pi-play span { width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; color:var(--navy); }
-.pi-card-body { padding:22px 24px; display:flex; flex-direction:column; gap:9px; min-width:0; }
-.pi-card-title { font-family:var(--serif); font-weight:400; font-size:21px; line-height:1.25; color:var(--ink); }
-.pi-card-excerpt { font-size:14px; color:var(--muted); line-height:1.55; }
+.pi-card { background:#fff; border:1px solid var(--line); border-radius:18px; cursor:pointer; transition:transform .18s, box-shadow .18s; display:flex; gap:20px; align-items:flex-start; padding:20px 22px; }
+.pi-card:hover { transform:translateY(-2px); box-shadow:0 12px 30px rgba(10,22,40,.09); }
+/* Miniatura junto al título: vertical para documentos, horizontal para el resto */
+.pi-thumb { position:relative; flex:none; width:128px; aspect-ratio:4 / 3; border-radius:8px; overflow:hidden; background:linear-gradient(135deg,#0a1628,#1b6b93); border:1px solid var(--line); box-shadow:0 3px 10px rgba(10,22,40,.14); }
+.pi-thumb.doc { width:96px; aspect-ratio:3 / 4; }
+.pi-thumb.video { aspect-ratio:16 / 9; }
+.pi-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.pi-thumb .pi-play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.pi-thumb .pi-play span { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; color:var(--navy); }
+.pi-card-body { display:flex; flex-direction:column; gap:8px; min-width:0; flex:1; }
+.pi-card-title { font-family:var(--serif); font-weight:400; font-size:21px; line-height:1.25; color:var(--ink); margin:0; text-decoration:underline; text-decoration-color:transparent; text-underline-offset:4px; transition:text-decoration-color .15s; }
+.pi-card:hover .pi-card-title, .pi-card:focus-visible .pi-card-title { text-decoration-color:rgba(27,107,147,.5); }
+.pi-card:focus-visible { outline:3px solid #48cae4; outline-offset:2px; }
+.pi-card-excerpt { font-size:14px; color:var(--muted); line-height:1.55; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.pi-ext-flag { display:inline-flex; align-items:center; gap:4px; color:var(--cyan-d); font-weight:600; }
 .pi-card-foot { display:flex; align-items:center; gap:14px; margin-top:4px; font-size:12.5px; color:var(--soft); }
 .pi-card-foot .pi-dot { display:inline-flex; align-items:center; gap:5px; }
 .pi-admin-row { display:flex; gap:6px; margin-top:6px; }
@@ -323,12 +349,22 @@ const BLOG_CSS = `
 
 /* Detail */
 .pi-detail { background:#fff; border:1px solid var(--line); border-radius:20px; overflow:hidden; }
-.pi-detail-cover { width:100%; max-height:420px; object-fit:cover; display:block; background:var(--navy); }
+.pi-detail-head { display:flex; gap:26px; align-items:flex-start; margin-bottom:8px; }
+.pi-detail-cover { flex:none; width:220px; aspect-ratio:4 / 3; height:auto; object-fit:cover; display:block; border-radius:10px; border:1px solid var(--line); box-shadow:0 6px 18px rgba(10,22,40,.16); background:var(--navy); }
+.pi-detail-cover.doc { width:168px; aspect-ratio:3 / 4; }
+.pi-detail-head-text { min-width:0; flex:1; }
+.pi-title-link { color:var(--ink); text-decoration:underline; text-decoration-color:rgba(27,107,147,.45); text-underline-offset:6px; }
+.pi-title-link:hover { color:var(--cyan-d); }
+.pi-title-link svg { vertical-align:middle; color:var(--cyan-d); margin-left:4px; }
+.pi-ext-btn { display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#00b4d8,#48cae4); color:#062330; font-weight:700; font-size:14px; padding:0 18px; min-height:44px; border-radius:10px; text-decoration:none; }
+.pi-ext-btn:hover { filter:brightness(1.05); color:#062330; }
+.pi-ext-note { display:block; font-size:12px; color:var(--muted); margin-top:6px; }
+.pi-detail-content a { color:var(--cyan-d); text-decoration:underline; word-break:break-all; }
 .pi-detail-pad { padding:34px 40px 44px; }
 .pi-back { background:none; border:1px solid var(--line); border-radius:10px; padding:8px 14px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-bottom:18px; font-family:inherit; }
 .pi-back:hover { border-color:var(--cyan); color:var(--cyan-d); }
-.pi-detail h1 { font-family:var(--serif); font-weight:400; font-size:clamp(26px,3.6vw,38px); line-height:1.18; margin:14px 0 12px; color:var(--ink); }
-.pi-detail-meta { display:flex; gap:16px; align-items:center; font-size:13px; color:var(--soft); margin-bottom:26px; flex-wrap:wrap; }
+.pi-detail h1 { font-family:var(--serif); font-weight:400; font-size:clamp(26px,3.4vw,34px); line-height:1.18; margin:12px 0 10px; color:var(--ink); }
+.pi-detail-meta { display:flex; gap:16px; align-items:center; font-size:13px; color:var(--soft); margin-bottom:18px; flex-wrap:wrap; }
 .pi-detail-content p { font-size:16.5px; line-height:1.75; color:#23303f; margin:0 0 18px; }
 .pi-video-wrap { position:relative; padding-bottom:56.25%; height:0; border-radius:14px; overflow:hidden; margin:8px 0 26px; background:#000; }
 .pi-video-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
@@ -353,8 +389,10 @@ const BLOG_CSS = `
   .pi-hero-inner { padding:44px 22px 48px; }
   .pi-hero h1 { margin-bottom:22px; }
   .pi-sidebar { position:static; }
-  .pi-card { grid-template-columns:1fr; }
-  .pi-card-media { min-height:200px; }
+  .pi-card { gap:14px; padding:16px; }
+  .pi-thumb { width:96px; }
+  .pi-thumb.doc { width:72px; }
+  .pi-detail-head { flex-direction:column; }
   .pi-detail-pad { padding:26px 22px 34px; }
 }
 `
@@ -488,13 +526,20 @@ function PostCard({ post, isAdmin, onOpen, onEdit, onDelete }) {
   const isVideo = type === 'Video' || (!!post.video_url && !img)
   const fm = formatMeta(type)
   const hasMedia = !!img || isVideo
+  const thumbClass = type === 'Documento' ? 'doc' : (isVideo && !img ? 'video' : '')
+  const hasExt = isHttpUrl(post.link_url)
   return (
-    <article className={`pi-card ${hasMedia ? '' : 'no-media'}`} onClick={() => onOpen(post)}>
+    <article
+      className="pi-card"
+      onClick={() => onOpen(post)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(post) } }}
+      tabIndex={0}
+      role="link"
+      aria-label={post.title}
+    >
       {hasMedia && (
-        <div className="pi-card-media">
-          {img
-            ? <img src={img} alt="" onError={e => { e.target.style.display = 'none' }} />
-            : <div style={{ width: '100%', height: '100%', minHeight: 160, background: 'linear-gradient(135deg,#0a1628,#1b6b93)' }} />}
+        <div className={`pi-thumb ${thumbClass}`}>
+          {img && <img src={img} alt="" loading="lazy" onError={e => { e.target.style.display = 'none' }} />}
           {(isVideo || post.video_url) && <div className="pi-play"><span>{I.video}</span></div>}
         </div>
       )}
@@ -508,6 +553,7 @@ function PostCard({ post, isAdmin, onOpen, onEdit, onDelete }) {
         <div className="pi-card-foot">
           <span className="pi-dot">{I.calendar} {formatDate(post.created_at)}</span>
           {post.author && <span className="pi-dot">· {post.author}</span>}
+          {hasExt && <span className="pi-ext-flag"><ExtIcon size={13} /> Incluye enlace externo</span>}
         </div>
         {isAdmin && (
           <div className="pi-admin-row" onClick={e => e.stopPropagation()}>
@@ -527,21 +573,33 @@ function PostDetail({ post, isAdmin, onBack, onEdit, onDelete }) {
   const cover = safeUrl(post.cover_image)
   const embed = toEmbedUrl(post.video_url)
   const bodyImages = Array.isArray(post.images) ? post.images.filter(u => isHttpUrl(u) && u !== cover) : []
-  const fm = formatMeta(postType(post))
+  const type = postType(post)
+  const fm = formatMeta(type)
   const paragraphs = (post.content || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
+  const ext = safeUrl(post.link_url)
 
   return (
     <article className="pi-detail pi-fade">
-      {cover && <img className="pi-detail-cover" src={cover} alt="" onError={e => { e.target.style.display = 'none' }} />}
       <div className="pi-detail-pad">
         <button className="pi-back" onClick={onBack}>{Icons.back} Volver</button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span className="pi-badge" style={{ background: fm.bg, color: fm.color }}>{fm.icon} {postType(post)}</span>
-          {post.category && <span className="pi-cat">{post.category}</span>}
-        </div>
+        <div className="pi-detail-head">
+          {cover && (
+            ext
+              ? <a href={ext} target="_blank" rel="noopener noreferrer" aria-label={`${extLabel(type)} (se abre en una pestaña nueva)`}><img className={`pi-detail-cover ${type === 'Documento' ? 'doc' : ''}`} src={cover} alt="" onError={e => { e.target.style.display = 'none' }} /></a>
+              : <img className={`pi-detail-cover ${type === 'Documento' ? 'doc' : ''}`} src={cover} alt="" onError={e => { e.target.style.display = 'none' }} />
+          )}
+          <div className="pi-detail-head-text">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="pi-badge" style={{ background: fm.bg, color: fm.color }}>{fm.icon} {type}</span>
+              {post.category && <span className="pi-cat">{post.category}</span>}
+            </div>
 
-        <h1>{post.title}</h1>
+            <h1>
+              {ext
+                ? <a className="pi-title-link" href={ext} target="_blank" rel="noopener noreferrer">{post.title}<ExtIcon size={22} /></a>
+                : post.title}
+            </h1>
         <div className="pi-detail-meta">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{I.calendar} {formatDate(post.created_at)}</span>
           {post.author && <span>· {post.author}</span>}
@@ -551,6 +609,14 @@ function PostDetail({ post, isAdmin, onBack, onEdit, onDelete }) {
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger,#b3261e)' }} onClick={() => onDelete(post)}>{Icons.trash} Eliminar</button>
             </span>
           )}
+        </div>
+            {ext && (
+              <div style={{ marginBottom: 18 }}>
+                <a className="pi-ext-btn" href={ext} target="_blank" rel="noopener noreferrer">{extLabel(type)} <ExtIcon /></a>
+                <span className="pi-ext-note">Se abre en {hostOf(ext)}, en una pestaña nueva.</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {embed && (
@@ -569,7 +635,7 @@ function PostDetail({ post, isAdmin, onBack, onEdit, onDelete }) {
 
         <div className="pi-detail-content">
           {paragraphs.length > 0
-            ? paragraphs.map((p, i) => <p key={i}>{p}</p>)
+            ? paragraphs.map((p, i) => <p key={i}>{linkify(p)}</p>)
             : <p style={{ color: 'var(--muted)' }}>Sin contenido de texto.</p>}
         </div>
 
@@ -594,6 +660,7 @@ function Composer({ initial, onClose, onSave }) {
   const categoryOptions = CATEGORIES.includes(category) ? CATEGORIES : [...CATEGORIES, category]
   const [content, setContent] = useState(initial?.content || '')
   const [videoUrl, setVideoUrl] = useState(initial?.video_url || '')
+  const [linkUrl, setLinkUrl] = useState(initial?.link_url || '')
   const [coverUrl, setCoverUrl] = useState(initial?.cover_image || '')
   const [coverFile, setCoverFile] = useState(null)
   const [bodyFiles, setBodyFiles] = useState([])
@@ -612,6 +679,7 @@ function Composer({ initial, onClose, onSave }) {
     const badUrl = pastedUrls.find(u => !isHttpUrl(u))
     if (badUrl) { setError(`URL de imagen no válida: ${badUrl}`); return }
     if (videoUrl.trim() && !toEmbedUrl(videoUrl)) { setError('El video debe ser un enlace de YouTube o Vimeo.'); return }
+    if (linkUrl.trim() && !isHttpUrl(linkUrl.trim())) { setError('El enlace externo debe empezar con https://'); return }
     setSaving(true)
     try {
       let cover = coverUrl.trim()
@@ -628,11 +696,14 @@ function Composer({ initial, onClose, onSave }) {
         type,
         content: content.trim(),
         video_url: videoUrl.trim() || null,
+        link_url: linkUrl.trim() || null,
         cover_image: cover || null,
         images: images.length ? images : null,
       })
     } catch (err) {
-      setError(err.message?.includes('Bucket') || err.message?.includes('bucket')
+      setError(err.message?.includes('link_url')
+        ? 'Falta la columna "link_url" en la base de datos: ejecuta en Supabase el bloque "Enlace externo" de SUPABASE_SETUP.sql.'
+        : err.message?.includes('Bucket') || err.message?.includes('bucket')
         ? 'No se pudo subir el archivo: crea un bucket público llamado "media" en Supabase Storage (ver SUPABASE_SETUP.sql), o pega una URL de imagen en su lugar.'
         : (err.message || 'No se pudo guardar la publicación.'))
       setSaving(false)
@@ -669,6 +740,11 @@ function Composer({ initial, onClose, onSave }) {
 
         <div className="form-group"><label>Contenido</label>
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Escribe aquí. Deja una línea en blanco para separar párrafos." style={{ minHeight: 160, lineHeight: 1.6 }} />
+        </div>
+
+        <div className="form-group"><label>Enlace externo (opcional) — documento, herramienta o fuente original</label>
+          <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://www.theiia.org/…" />
+          <small style={{ display: 'block', marginTop: 6, color: 'var(--muted)', fontSize: 12 }}>Si lo completas, el título de la publicación será un enlace y aparecerá el botón “{extLabel(type)}”.</small>
         </div>
 
         <div className="form-group"><label>Video (opcional) — URL de YouTube o Vimeo</label>
@@ -953,7 +1029,7 @@ export default function App() {
   const savePost = async (p) => {
     const payload = {
       title: p.title, category: p.category, type: p.type, content: p.content,
-      video_url: p.video_url, cover_image: p.cover_image, images: p.images,
+      video_url: p.video_url, link_url: p.link_url, cover_image: p.cover_image, images: p.images,
       author: user?.user_metadata?.full_name || 'Prospectiva IA',
     }
     if (p.id) {
