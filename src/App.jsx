@@ -234,7 +234,7 @@ const BLOG_CSS = `
 .pi-hero-inner { max-width:1280px; margin:0 auto; padding:64px 24px 68px; position:relative; }
 .pi-hero h1 { margin:0 0 32px; position:relative; z-index:1; line-height:0; }
 .pi-hero h1 img { width:clamp(260px,38vw,520px); height:auto; display:block; }
-.pi-hero p { font-size:clamp(17px,1.9vw,26px); font-weight:500; color:rgba(255,255,255,.92); line-height:1.45; margin:0; position:relative; z-index:1; text-wrap:balance; }
+.pi-hero p { font-size:clamp(17px,1.9vw,26px); font-weight:600; text-transform:uppercase; letter-spacing:.01em; color:rgba(255,255,255,.92); line-height:1.45; margin:0; position:relative; z-index:1; text-wrap:balance; }
 .pi-hero-eyebrow { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#9fe3f2; margin-bottom:16px; position:relative; z-index:1; }
 .pi-hero-orb { position:absolute; border-radius:50%; pointer-events:none; }
 
@@ -428,7 +428,7 @@ function Sidebar({ onSubscribe }) {
 
       <div className="pi-side-card pi-about">
         <p className="pi-side-title">Acerca de</p>
-        <p>Prospectiva IA reúne publicaciones, recursos y experimentos sobre gestión de riesgos, cumplimiento y auditoría apoyada en inteligencia artificial.</p>
+        <p>Prospectiva IA reúne artículos, herramientas y casos prácticos sobre inteligencia artificial aplicada a las funciones de auditoría, gestión de riesgos, control y cumplimiento normativo.</p>
         <span className="pi-tag">Anticipa · Controla · Previene</span>
       </div>
     </aside>
@@ -896,6 +896,19 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Acceso de administrador por dirección: prospectivaia.cl/#admin abre el login.
+  // Ocultar el botón es solo por limpieza visual; la seguridad real está en Supabase (tabla admins + RLS).
+  useEffect(() => {
+    const check = () => { if (window.location.hash === '#admin') setShowLogin(true) }
+    check()
+    window.addEventListener('hashchange', check)
+    return () => window.removeEventListener('hashchange', check)
+  }, [])
+  const closeLogin = () => {
+    setShowLogin(false)
+    if (window.location.hash === '#admin') history.replaceState(null, '', window.location.pathname + window.location.search)
+  }
+
   useEffect(() => { loadPosts() }, [])
 
   // El logo pequeño del encabezado aparece al bajar más allá del banner
@@ -987,6 +1000,8 @@ export default function App() {
       <style>{BLOG_CSS}</style>
 
       {/* Header */}
+      {/* Visitantes: el encabezado solo aparece dentro de una publicación (logo para volver). Admin: siempre. */}
+      {(isAdmin || selected) && (
       <header className="pi-header">
         <div className="pi-header-inner">
           {/* En la portada el logo grande está en el banner; el pequeño aparece al bajar o dentro de una publicación */}
@@ -1000,18 +1015,18 @@ export default function App() {
             <img src={logoSrc} alt="Prospectiva IA" />
           </button>
           <div className="pi-head-actions">
-            {isAdmin ? (
+            {/* Sin botón de acceso visible: el administrador entra por prospectivaia.cl/#admin */}
+            {isAdmin && (
               <>
                 <button className="btn btn-accent btn-sm" onClick={() => setComposer(sec.type ? { type: sec.type } : {})}>{Icons.plus} Nueva publicación</button>
                 <span className="pi-admin-chip"><span className="pi-admin-dot" /> Admin</span>
-                <button className="btn btn-ghost btn-sm" onClick={logout}>{Icons.logout}</button>
+                <button className="btn btn-ghost btn-sm" onClick={logout} aria-label="Cerrar sesión" title="Cerrar sesión">{Icons.logout}</button>
               </>
-            ) : (
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowLogin(true)}>Acceso</button>
             )}
           </div>
         </div>
       </header>
+      )}
 
       {/* Beta */}
       <div className="pi-beta"><b>Beta</b> Estás viendo una versión preliminar del sitio. El contenido puede cambiar.</div>
@@ -1023,7 +1038,7 @@ export default function App() {
             <div className="pi-hero-orb" style={{ width: 320, height: 320, right: -60, top: -80, background: 'radial-gradient(circle, rgba(72,202,228,.18), transparent 70%)' }} />
             <div className="pi-hero-orb" style={{ width: 220, height: 220, right: 120, bottom: -120, background: 'radial-gradient(circle, rgba(0,180,216,.12), transparent 70%)' }} />
             <h1><img src={logoWhiteSrc} alt="Prospectiva IA · Anticipa · Controla · Previene" /></h1>
-            <p>Desarrollamos capacidades y conocimiento especializado para habilitar un aseguramiento continuo en las organizaciones con inteligencia artificial aplicada.</p>
+            <p>Desarrollamos conocimiento especializado en inteligencia artificial aplicada para habilitar aseguramiento continuo en las organizaciones.</p>
           </div>
         </section>
       )}
@@ -1123,7 +1138,7 @@ export default function App() {
 
       {/* Modales */}
       {composer !== null && <Composer initial={composer} onClose={() => setComposer(null)} onSave={savePost} />}
-      {showLogin && !isAdmin && <AdminLoginModal onClose={() => setShowLogin(false)} onLoggedIn={(u) => { setUser(u); setShowLogin(false) }} />}
+      {showLogin && !isAdmin && <AdminLoginModal onClose={closeLogin} onLoggedIn={(u) => { setUser(u); closeLogin() }} />}
     </div>
   )
 }
