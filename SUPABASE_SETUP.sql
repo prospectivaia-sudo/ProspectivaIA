@@ -78,6 +78,12 @@ alter table public.posts add column if not exists created_by  uuid references au
 alter table public.posts add column if not exists created_at  timestamptz not null default now();
 alter table public.posts alter column created_by set default auth.uid();
 
+-- Enlace externo (documento, herramienta o fuente original). Agregado 2026-11-20.
+alter table public.posts add column if not exists link_url text;
+alter table public.posts drop constraint if exists posts_link_url_fmt;
+alter table public.posts add  constraint posts_link_url_fmt
+  check (link_url is null or link_url ~* '^https?://') not valid;
+
 -- Límites básicos (NOT VALID = no revisa filas antiguas, solo las nuevas).
 alter table public.posts drop constraint if exists posts_title_len;
 alter table public.posts add  constraint posts_title_len
